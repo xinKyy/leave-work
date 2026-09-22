@@ -48,7 +48,7 @@ metadata:
     app: leave-work
     cloud.sealos.io/app-deploy-manager: leave-work
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: leave-work
   ports:
