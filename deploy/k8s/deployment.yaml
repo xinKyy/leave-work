@@ -49,3 +49,31 @@ spec:
     - name: http
       port: 80
       targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: network-leave-work
+  labels:
+    cloud.sealos.io/app-deploy-manager: leave-work
+    cloud.sealos.io/app-deploy-manager-domain: leaveworkrpxv3va7
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+    - host: leaveworkrpxv3va7.sealoshzh.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: leave-work
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - leaveworkrpxv3va7.sealoshzh.site
+      secretName: wildcard-cert
