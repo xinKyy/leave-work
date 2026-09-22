@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canSee, canStand, createGame, EXITS, findPath, GUARD_PATROL_ROUTES, isKeycardSpawnSafe, KEYCARD_SPAWN_CLEARANCE, KEYCARD_SPAWNS, segmentBlocked, stepGame, type Input, type Obstacle } from '../src/simulation';
+import { canSee, canStand, createGame, EXITS, findPath, GUARD_PATROL_ROUTES, isKeycardSpawnSafe, KEYCARD_SPAWN_CLEARANCE, KEYCARD_SPAWNS, OBSTACLES, segmentBlocked, stepGame, type Input, type Obstacle } from '../src/simulation';
 
 const still: Input = { x: 0, z: 0, run: false, interact: false };
 const wall: Obstacle = { x: 0, z: 2, width: 4, depth: 0.3, height: 2, kind: 'wall' };
@@ -69,6 +69,44 @@ describe('movement and routes', () => {
     for (let tick = 0; tick < 80; tick++) stepGame(state, still, 0.05);
     expect(guard.moving).toBe(true);
     expect(Math.hypot(guard.x - 5.5, guard.z - 7)).toBeGreaterThan(2);
+  });
+  it('routes between walkable points around a desk corner', () => {
+    const from = { x: 8.536673011521678, z: 5.1331440753166255 };
+    const to = { x: 9.209618439819202, z: 4.653823911980615 };
+    expect(canStand(from, 0.38)).toBe(true);
+    expect(canStand(to, 0.38)).toBe(true);
+    expect(findPath(from, to, 0.38)).not.toHaveLength(0);
+  });
+  it('starts a corner route with a safe lead node from the current position', () => {
+    const from = { x: -4.283, z: 4.859 };
+    const to = { x: 2.878, z: 5.547 };
+    const path = findPath(from, to, 0.38);
+    expect(path).not.toHaveLength(0);
+    expect(segmentBlocked(from, path[0], OBSTACLES, 0.38)).toBe(false);
+  });
+  it('reports guard path diagnostics through the debug logger', () => {
+    const state = createGame(() => 0);
+    const logs: string[] = [];
+    state.phase = 'playing';
+    state.guards = [state.guards[0]];
+    state.debugLog = event => logs.push(event);
+    const guard = state.guards[0];
+    Object.assign(guard, { x: 8.536673011521678, z: 5.1331440753166255, mode: 'chase', alert: 1, lastSeen: { x: 9.209618439819202, z: 4.653823911980615 }, path: [], repath: 0 });
+    Object.assign(state.player, guard.lastSeen);
+    stepGame(state, still, 0.05);
+    expect(logs).toContain('guard-path');
+  });
+  it('reports guard collision diagnostics when a waypoint is blocked', () => {
+    const state = createGame(() => 0);
+    const logs: string[] = [];
+    state.phase = 'playing';
+    state.guards = [state.guards[0]];
+    state.debugLog = event => logs.push(event);
+    const guard = state.guards[0];
+    Object.assign(guard, { x: 8.5, z: 5.1, mode: 'patrol', route: [{ x: 8.5, z: 4 }], waypoint: 0, path: [{ x: 8.5, z: 4 }], repath: 1 });
+    Object.assign(state.player, { x: -5.5, z: 8.5 });
+    for (let tick = 0; tick < 10; tick++) stepGame(state, still, 0.05);
+    expect(logs).toContain('guard-blocked');
   });
   it('gives every manager route a reachable door waypoint', () => {
     for (const routes of GUARD_PATROL_ROUTES) {

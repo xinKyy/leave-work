@@ -12,6 +12,8 @@ export type Guard = Point & {
   repath: number;
   moving: boolean;
   visible: boolean;
+  debugPathElapsed: number;
+  debugBlockedElapsed: number;
 };
 export type GameState = {
   phase: 'ready' | 'playing' | 'paused' | 'won' | 'lost';
@@ -92,8 +94,8 @@ export function createGame(random: () => number = Math.random): GameState {
     phase: 'ready',
     player: { x: -5.5, z: 8.5, angle: Math.PI, moving: false, running: false },
     guards: [
-      { x: 5.5, z: 7, angle: Math.PI, alert: 0, mode: 'patrol', route: guardRoutes[0], waypoint: 1, lastSeen: { x: 0, z: 7 }, searchTime: 0, path: [], repath: 0, moving: false, visible: false },
-      { x: -6.5, z: -5, angle: 0, alert: 0, mode: 'patrol', route: guardRoutes[1], waypoint: 1, lastSeen: { x: 0, z: 7 }, searchTime: 0, path: [], repath: 0, moving: false, visible: false },
+      { x: 5.5, z: 7, angle: Math.PI, alert: 0, mode: 'patrol', route: guardRoutes[0], waypoint: 1, lastSeen: { x: 0, z: 7 }, searchTime: 0, path: [], repath: 0, moving: false, visible: false, debugPathElapsed: 0, debugBlockedElapsed: 0 },
+      { x: -6.5, z: -5, angle: 0, alert: 0, mode: 'patrol', route: guardRoutes[1], waypoint: 1, lastSeen: { x: 0, z: 7 }, searchTime: 0, path: [], repath: 0, moving: false, visible: false, debugPathElapsed: 0, debugBlockedElapsed: 0 },
     ],
     time: 95,
     stamina: 1,
@@ -172,14 +174,22 @@ export function findPath(from: Point, to: Point, radius = playerRadius): Point[]
   const step = 1;
   const key = (x: number, z: number) => `${x},${z}`;
   const start = nearestNavigable(from, radius, from);
-  const goal = nearestNavigable(to, radius);
-  if (!start || !goal) return [];
+  if (!start) return [];
   const queue = [start];
   const parent = new Map<string, Point>();
   const seen = new Set([key(start.x, start.z)]);
+  let closest = start;
+  let closestDistance = distance(start, to);
+  let directGoal: Point | null = null;
+  let directDistance = Infinity;
   while (queue.length) {
     const current = queue.shift()!;
-    if (Math.hypot(current.x - goal.x, current.z - goal.z) < 0.5) break;
+    const currentDistance = distance(current, to);
+    if (currentDistance < closestDistance) { closest = current; closestDistance = currentDistance; }
+    if (canStand(to, radius) && !segmentBlocked(current, to, OBSTACLES, radius) && currentDistance < directDistance) {
+      directGoal = current;
+      directDistance = currentDistance;
+    }
     for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
       const next = { x: current.x + dx * step, z: current.z + dz * step };
       const nextKey = key(next.x, next.z);
@@ -187,13 +197,15 @@ export function findPath(from: Point, to: Point, radius = playerRadius): Point[]
       seen.add(nextKey); parent.set(nextKey, current); queue.push(next);
     }
   }
+  const goal = directGoal ?? closest;
   const goalKey = key(goal.x, goal.z);
   if (!seen.has(goalKey)) return [];
   const path: Point[] = [];
   let cursor = goal;
   while (key(cursor.x, cursor.z) !== key(start.x, start.z)) { path.unshift({ ...cursor }); cursor = parent.get(key(cursor.x, cursor.z))!; }
+  if (path.length && segmentBlocked(from, path[0], OBSTACLES, radius)) path.unshift({ ...start });
   const last = path.at(-1) ?? start;
-  if (canStand(to, radius) && !segmentBlocked(last, to, OBSTACLES, radius)) path.push({ ...to });
+  if (directGoal && canStand(to, radius) && !segmentBlocked(last, to, OBSTACLES, radius)) path.push({ ...to });
   return path;
 }
 
@@ -210,7 +222,7 @@ function moveToward(actor: Point & { angle: number; moving: boolean }, target: P
   return length < 0.22;
 }
 
-function updateGuard(guard: Guard, state: GameState, delta: number) {
+function updateGuard(guard: Guard, state: GameState, delta: number, index: number) {
   const spotted = canSee(guard, state.player);
   const heard = state.doorOpening;
   guard.visible = spotted;
@@ -227,10 +239,47 @@ function updateGuard(guard: Guard, state: GameState, delta: number) {
   if (guard.mode === 'chase') { target = guard.lastSeen; speed = 2.6; }
   else if (guard.mode === 'search') { target = guard.lastSeen; speed = 1.8; }
   else { target = guard.route[guard.waypoint]; if (distance(guard, target) < 0.35) guard.waypoint = (guard.waypoint + 1) % guard.route.length; target = guard.route[guard.waypoint]; }
-  if (!guard.path.length || guard.repath <= 0 || guard.mode !== 'patrol') { guard.path = findPath(guard, target, guardRadius); guard.repath = 0.4; }
+  guard.debugPathElapsed += delta;
+  const needsPath = !guard.path.length || guard.repath <= 0 || guard.mode !== 'patrol';
+  if (needsPath) {
+    const hadPath = guard.path.length > 0;
+    guard.path = findPath(guard, target, guardRadius);
+    guard.repath = 0.4;
+    if (state.debugLog && (!hadPath || guard.debugPathElapsed >= 0.4)) {
+      state.debugLog('guard-path', {
+        index,
+        mode: guard.mode,
+        position: { x: Number(guard.x.toFixed(3)), z: Number(guard.z.toFixed(3)) },
+        target: { x: Number(target.x.toFixed(3)), z: Number(target.z.toFixed(3)) },
+        pathLength: guard.path.length,
+        next: guard.path[0] ?? null,
+        lastSeen: guard.lastSeen,
+      });
+      guard.debugPathElapsed = 0;
+    }
+  }
   guard.repath -= delta;
   const next = guard.path[0] ?? target;
-  if (moveToward(guard, next, speed, delta, guardRadius)) guard.path.shift();
+  const reached = moveToward(guard, next, speed, delta, guardRadius);
+  if (!reached && !guard.moving) {
+    guard.debugBlockedElapsed += delta;
+    if (state.debugLog && guard.debugBlockedElapsed >= 0.25) {
+      const blockers = OBSTACLES.filter(obstacle => pointInObstacle(next, obstacle, guardRadius) || segmentIntersectsRect(guard, next, obstacle, guardRadius)).map(obstacle => ({ kind: obstacle.kind, x: obstacle.x, z: obstacle.z, width: obstacle.width, depth: obstacle.depth }));
+      state.debugLog('guard-blocked', {
+        index,
+        mode: guard.mode,
+        position: { x: Number(guard.x.toFixed(3)), z: Number(guard.z.toFixed(3)) },
+        target: { x: Number(target.x.toFixed(3)), z: Number(target.z.toFixed(3)) },
+        next: { x: Number(next.x.toFixed(3)), z: Number(next.z.toFixed(3)) },
+        pathLength: guard.path.length,
+        canStand: canStand(next, guardRadius),
+        segmentBlocked: segmentBlocked(guard, next, OBSTACLES, guardRadius),
+        blockers,
+      });
+      guard.debugBlockedElapsed = 0;
+    }
+  } else guard.debugBlockedElapsed = 0;
+  if (reached) guard.path.shift();
 }
 
 export function stepGame(state: GameState, input: Input, delta: number): void {
@@ -262,7 +311,7 @@ export function stepGame(state: GameState, input: Input, delta: number): void {
   const exit = nearFront ? 'front' : nearBack ? 'back' : null;
   const allowed = exit !== null && state.keycard;
   state.doorOpening = Boolean(exit && input.interact && allowed);
-  for (const [index, guard] of state.guards.entries()) { const previousMode = guard.mode; updateGuard(guard, state, elapsed); if (state.debugLog && previousMode !== guard.mode) state.debugLog('guard-state', { index, position: { x: Number(guard.x.toFixed(2)), z: Number(guard.z.toFixed(2)) }, angle: Number(guard.angle.toFixed(2)), mode: guard.mode, visible: guard.visible, alert: Number(guard.alert.toFixed(2)), lastSeen: guard.lastSeen }); if (distance(guard, state.player) < 0.7 && guard.mode === 'chase') { state.phase = 'lost'; state.reason = '被经理抓住了：临时会议开始'; return; } }
+  for (const [index, guard] of state.guards.entries()) { const previousMode = guard.mode; updateGuard(guard, state, elapsed, index); if (state.debugLog && previousMode !== guard.mode) state.debugLog('guard-state', { index, position: { x: Number(guard.x.toFixed(2)), z: Number(guard.z.toFixed(2)) }, angle: Number(guard.angle.toFixed(2)), mode: guard.mode, visible: guard.visible, alert: Number(guard.alert.toFixed(2)), lastSeen: guard.lastSeen }); if (distance(guard, state.player) < 0.7 && guard.mode === 'chase') { state.phase = 'lost'; state.reason = '被经理抓住了：临时会议开始'; return; } }
   if (state.doorOpening) { state.exit = exit; state.exitProgress = clamp(state.exitProgress + elapsed / 5, 0, 1); if (state.exitProgress >= 1) { state.phase = 'won'; state.reason = exit === 'front' ? '正门刷卡成功，准点下班！' : '后门溜出成功，完美潜行！'; } }
   else state.exitProgress = clamp(state.exitProgress - elapsed * 3.5, 0, 1);
 }
