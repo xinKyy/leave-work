@@ -1,0 +1,60 @@
+name: Deploy to Sealos
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/xinkyy/leave-work
+  DEPLOYMENT: leave-work
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:main
+            ${{ env.IMAGE }}:${{ github.sha }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure Sealos access
+        env:
+          SEALOS_KUBECONFIG_B64: ${{ secrets.SEALOS_KUBECONFIG_B64 }}
+        run: |
+          test -n "$SEALOS_KUBECONFIG_B64" || { echo "Missing SEALOS_KUBECONFIG_B64"; exit 1; }
+          echo "$SEALOS_KUBECONFIG_B64" | base64 --decode > "$RUNNER_TEMP/sealos-kubeconfig"
+          chmod 600 "$RUNNER_TEMP/sealos-kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/sealos-kubeconfig" >> "$GITHUB_ENV"
+
+      - name: Update Sealos deployment
+        env:
+          SEALOS_NAMESPACE: ${{ secrets.SEALOS_NAMESPACE }}
+          IMAGE: ${{ env.IMAGE }}
+          DEPLOYMENT: ${{ env.DEPLOYMENT }}
+        run: |
+          test -n "$SEALOS_NAMESPACE" || { echo "Missing SEALOS_NAMESPACE"; exit 1; }
+          kubectl -n "$SEALOS_NAMESPACE" apply -f deploy/k8s/deployment.yaml
+          kubectl -n "$SEALOS_NAMESPACE" set image deployment/$DEPLOYMENT "$DEPLOYMENT=$IMAGE:$GITHUB_SHA"
+          kubectl -n "$SEALOS_NAMESPACE" rollout status deployment/$DEPLOYMENT --timeout=180s

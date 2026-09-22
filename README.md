@@ -70,6 +70,19 @@ docker run --rm -p 8080:80 leave-work:latest
 
 部署检查：确认公网地址能返回游戏首页、`/assets/player.gltf` 能正常加载，并在手机或另一台电脑上实际打开一次。更新代码后重新构建镜像并重新部署；如果使用 GitHub 自动构建，推送到 `main` 后按 Sealos 的重新部署或自动构建设置执行。
 
+## GitHub Actions 自动部署
+
+仓库已经包含 `.github/workflows/ci.yml` 和 `.github/workflows/deploy.yml`：所有 PR 会自动跑测试和构建，PR 合并到 `main` 后会构建镜像、推送到 GHCR，并通过 `kubectl` 更新 Sealos Deployment。
+
+首次配置需要在 GitHub 仓库的 Settings → Secrets and variables → Actions 中添加：
+
+- `SEALOS_KUBECONFIG_B64`：Sealos 集群 kubeconfig 文件经过 Base64 编码后的内容。
+- `SEALOS_NAMESPACE`：Sealos 应用所在的命名空间。
+
+不要把 kubeconfig、Sealos Token 或 GHCR 密码提交到仓库。可以在本地执行 `base64 -i kubeconfig.yaml | pbcopy`，然后把剪贴板内容粘贴到 `SEALOS_KUBECONFIG_B64`。Sealos 需要能够拉取 GHCR 镜像：最简单的做法是将 `ghcr.io/xinkyy/leave-work` 设置为公开包；如果保持私有，则在 Sealos 命名空间创建名为 `ghcr-pull` 的镜像拉取 Secret，并在 `deploy/k8s/deployment.yaml` 的 Pod 配置中加入该 Secret。
+
+工作流会创建一个 `LoadBalancer` Service。Sealos 如果不自动分配公网地址，在控制台为 `leave-work` Service 开启公网访问或绑定域名即可。对 `main` 的每次合并都会发布新的镜像并等待滚动更新完成。
+
 ## 技术说明
 
 核心状态与规则在 `src/simulation.ts`，Three.js 场景和模型加载在 `src/world.ts`，浏览器输入与界面在 `src/main.ts`。人物模型使用 Quaternius 的 CC0 资源，来源和哈希记录在 `ASSETS.md`。模型加载失败时会自动使用内置低多边形角色，游戏仍然可以操作。
