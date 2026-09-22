@@ -19,8 +19,8 @@ app.innerHTML = `
       <div class="status-label"><span id="phase-dot" class="phase-dot"></span><span id="status">准备出发</span></div>
       <div class="status-row"><span>门禁卡</span><b id="card-state" class="card-state">未取得</b></div>
       <div class="status-row"><span>体力</span><div class="meter"><i id="stamina"></i></div></div>
-      <p id="hint" class="hint">经理都在忙自己的事。现在，离开工位。</p>
     </aside>
+    <p id="hint" class="hint">经理都在忙自己的事。现在，离开工位。</p>
     <div id="exit-progress" class="exit-progress hidden" aria-live="polite">
       <div class="exit-progress-head"><span id="exit-progress-label">正在开门</span><b id="exit-progress-value">0%</b></div>
       <div class="exit-progress-track"><i id="exit-progress-fill"></i></div>
@@ -157,7 +157,10 @@ function updateUi(now: number) {
     const nearCard = Math.hypot(state.player.x - state.keycardPosition.x, state.player.z - state.keycardPosition.z) < 1.6;
     const nearFront = Math.hypot(state.player.x - EXITS.front.x, state.player.z - EXITS.front.z) < 1.8;
     const nearBack = Math.hypot(state.player.x - EXITS.back.x, state.player.z - EXITS.back.z) < 1.8;
-    $('#hint').textContent = nearCard && !state.keycard ? '按住 E 拿走门禁卡' : (nearFront || nearBack) && !state.keycard ? '这个出口需要门禁卡，先去找一张' : nearFront ? '按住 E，持续 5 秒开启正门；声音会引来经理' : nearBack ? '按住 E，持续 5 秒开启后门；声音会引来经理' : chasing ? '快躲起来！经理听到动静，正在赶来！' : '利用隔断遮住视线，安静地走。';
+    const revealedBossExit = state.revealedBossExit;
+    const otherExit = revealedBossExit === 'front' ? 'back' : 'front';
+    const nearOtherExit = otherExit === 'front' ? nearFront : nearBack;
+    $('#hint').textContent = revealedBossExit && nearOtherExit ? `这里可以出去，按住 E 开启${otherExit === 'front' ? '正门' : '后门'}` : revealedBossExit ? `门外有老板，请从${otherExit === 'front' ? '正门' : '后门'}出去` : nearCard && !state.keycard ? '按住 E 拿走门禁卡' : (nearFront || nearBack) && !state.keycard ? '这个出口需要门禁卡，先去找一张' : nearFront ? '按住 E，持续 5 秒开启正门；声音会引来经理' : nearBack ? '按住 E，持续 5 秒开启后门；声音会引来经理' : chasing ? '快躲起来！经理听到动静，正在赶来！' : '利用隔断遮住视线，安静地走。';
   }
   if (state.phase === 'won' || state.phase === 'lost') {
     $('#result-kicker').textContent = state.phase === 'won' ? 'SHIFT COMPLETE' : 'MEETING INVITATION';

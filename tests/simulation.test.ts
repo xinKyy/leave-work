@@ -128,6 +128,10 @@ describe('movement and routes', () => {
     expect(first.guards[0].route).not.toEqual(last.guards[0].route);
     expect(first.guards[1].route).not.toEqual(last.guards[1].route);
   });
+  it('randomizes which exit has a boss outside', () => {
+    expect(createGame(() => 0).bossExit).toBe('front');
+    expect(createGame(() => 0.99999).bossExit).toBe('back');
+  });
   it('normalizes diagonal speed and freezes a paused game', () => {
     const straight = createGame();
     const diagonal = createGame();
@@ -172,6 +176,7 @@ describe('escape and detection', () => {
     const state = createGame();
     state.phase = 'playing';
     state.guards = [];
+    state.bossExit = 'front';
     Object.assign(state.player, EXITS.back);
     for (let tick = 0; tick < 100; tick++) stepGame(state, { ...still, interact: true }, 0.05);
     expect(state.phase).toBe('playing');
@@ -186,6 +191,7 @@ describe('escape and detection', () => {
     const state = createGame();
     state.phase = 'playing';
     state.guards = [];
+    state.bossExit = 'back';
     Object.assign(state.player, EXITS.front);
     for (let tick = 0; tick < 35; tick++) stepGame(state, { ...still, interact: true }, 0.05);
     expect(state.phase).toBe('playing');
@@ -243,6 +249,7 @@ describe('escape and detection', () => {
     state.phase = 'playing';
     state.keycard = true;
     state.guards = [];
+    state.bossExit = exit === 'front' ? 'back' : 'front';
     Object.assign(state.player, EXITS[exit]);
     for (let tick = 0; tick < 49; tick++) stepGame(state, { ...still, interact: true }, 0.1);
     expect(state.phase).toBe('playing');
@@ -255,6 +262,7 @@ describe('escape and detection', () => {
     state.phase = 'playing';
     state.guards = [];
     state.keycard = true;
+    state.bossExit = 'back';
     Object.assign(state.player, EXITS.front);
     for (let tick = 0; tick < 25; tick++) stepGame(state, { ...still, interact: true }, 0.1);
     expect(state.exit).toBe('front');
@@ -263,5 +271,22 @@ describe('escape and detection', () => {
     expect(state.exitProgress).toBeLessThan(0.5);
     for (let tick = 0; tick < 55; tick++) stepGame(state, { ...still, interact: true }, 0.1);
     expect(state.phase).toBe('won');
+  });
+  it('reveals a boss at one exit and allows escape through the other', () => {
+    const state = createGame(() => 0);
+    state.phase = 'playing';
+    state.guards = [];
+    state.keycard = true;
+    state.bossExit = 'front';
+    Object.assign(state.player, EXITS.front);
+    for (let tick = 0; tick < 100; tick++) stepGame(state, { ...still, interact: true }, 0.05);
+    expect(state.phase).toBe('playing');
+    expect(state.revealedBossExit).toBe('front');
+    expect(state.exitProgress).toBe(0);
+    expect(state.doorOpening).toBe(false);
+    Object.assign(state.player, EXITS.back);
+    for (let tick = 0; tick < 100; tick++) stepGame(state, { ...still, interact: true }, 0.05);
+    expect(state.phase).toBe('won');
+    expect(state.exit).toBe('back');
   });
 });

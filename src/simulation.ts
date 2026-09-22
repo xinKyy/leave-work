@@ -1,4 +1,5 @@
 export type Point = { x: number; z: number };
+export type ExitName = 'front' | 'back';
 export type Obstacle = { x: number; z: number; width: number; depth: number; height: number; kind: 'wall' | 'desk' | 'cabinet' | 'table' | 'planter' };
 export type Guard = Point & {
   angle: number;
@@ -25,7 +26,9 @@ export type GameState = {
   keycardPosition: Point;
   doorOpening: boolean;
   exitProgress: number;
-  exit: 'front' | 'back' | null;
+  exit: ExitName | null;
+  bossExit: ExitName;
+  revealedBossExit: ExitName | null;
   reason: string;
   detections: number;
   debugElapsed: number;
@@ -106,6 +109,8 @@ export function createGame(random: () => number = Math.random): GameState {
     doorOpening: false,
     exitProgress: 0,
     exit: null,
+    bossExit: choose(['front', 'back'] as const, random),
+    revealedBossExit: null,
     reason: '',
     detections: 0,
     debugElapsed: 0,
@@ -311,9 +316,24 @@ export function stepGame(state: GameState, input: Input, delta: number): void {
   const nearFront = distance(state.player, EXITS.front) < 1.2;
   const nearBack = distance(state.player, EXITS.back) < 1.2;
   const exit = nearFront ? 'front' : nearBack ? 'back' : null;
-  const allowed = exit !== null && state.keycard;
+  const allowed = exit !== null && state.keycard && state.revealedBossExit !== exit;
   state.doorOpening = Boolean(exit && input.interact && allowed);
   for (const [index, guard] of state.guards.entries()) { const previousMode = guard.mode; updateGuard(guard, state, elapsed, index); if (state.debugLog && previousMode !== guard.mode) state.debugLog('guard-state', { index, position: { x: Number(guard.x.toFixed(2)), z: Number(guard.z.toFixed(2)) }, angle: Number(guard.angle.toFixed(2)), mode: guard.mode, visible: guard.visible, alert: Number(guard.alert.toFixed(2)), lastSeen: guard.lastSeen }); if (distance(guard, state.player) < 0.7 && guard.mode === 'chase') { state.phase = 'lost'; state.reason = '被经理抓住了：临时会议开始'; return; } }
-  if (state.doorOpening) { state.exit = exit; state.exitProgress = clamp(state.exitProgress + elapsed / 5, 0, 1); if (state.exitProgress >= 1) { state.phase = 'won'; state.reason = exit === 'front' ? '正门刷卡成功，准点下班！' : '后门溜出成功，完美潜行！'; } }
+  if (state.doorOpening) {
+    state.exit = exit;
+    state.exitProgress = clamp(state.exitProgress + elapsed / 5, 0, 1);
+    if (state.exitProgress >= 1) {
+      if (exit === state.bossExit) {
+        state.revealedBossExit = exit;
+        state.doorOpening = false;
+        state.exitProgress = 0;
+        state.exit = null;
+        state.reason = '门外有老板，请从另一扇门出去';
+      } else {
+        state.phase = 'won';
+        state.reason = exit === 'front' ? '正门刷卡成功，准点下班！' : '后门溜出成功，完美潜行！';
+      }
+    }
+  }
   else state.exitProgress = clamp(state.exitProgress - elapsed * 3.5, 0, 1);
 }
