@@ -51,6 +51,25 @@ describe('movement and routes', () => {
   it('keeps the card clear of walls with its full footprint', () => {
     expect(KEYCARD_SPAWNS.every(point => canStand(point, KEYCARD_SPAWN_CLEARANCE))).toBe(true);
   });
+  it('keeps card spawns away from visual wall edges', () => {
+    expect(isKeycardSpawnSafe({ x: 0, z: 6.3 })).toBe(false);
+  });
+  it('finds a route to a walkable target beside a cabinet', () => {
+    const destination = { x: -9.75, z: 0 };
+    expect(canStand(destination)).toBe(true);
+    expect(findPath({ x: 5.5, z: 7 }, destination)).not.toHaveLength(0);
+  });
+  it('keeps chasing around a cabinet when the direct route is blocked', () => {
+    const state = createGame(() => 0);
+    state.phase = 'playing';
+    state.guards = [state.guards[0]];
+    const guard = state.guards[0];
+    Object.assign(guard, { x: 5.5, z: 7, mode: 'chase', alert: 1, lastSeen: { x: -9.75, z: 0 }, path: [], repath: 0 });
+    Object.assign(state.player, { x: -9.75, z: 0 });
+    for (let tick = 0; tick < 80; tick++) stepGame(state, still, 0.05);
+    expect(guard.moving).toBe(true);
+    expect(Math.hypot(guard.x - 5.5, guard.z - 7)).toBeGreaterThan(2);
+  });
   it('gives every manager route a reachable door waypoint', () => {
     for (const routes of GUARD_PATROL_ROUTES) {
       for (const route of routes) {

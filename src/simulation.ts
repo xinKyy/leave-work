@@ -41,7 +41,7 @@ export const KEYCARD_SPAWNS: Point[] = [
   { x: 0, z: -5.2 },
 ];
 export const KEYCARD: Point = KEYCARD_SPAWNS[0];
-export const KEYCARD_SPAWN_CLEARANCE = 0.52;
+export const KEYCARD_SPAWN_CLEARANCE = 0.9;
 export const OBSTACLES: Obstacle[] = [
   { x: -8, z: 3.8, width: 4.8, depth: 1.5, height: 1.05, kind: 'desk' },
   { x: -1.5, z: 3.8, width: 4.8, depth: 1.5, height: 1.05, kind: 'desk' },
@@ -135,8 +135,8 @@ function segmentIntersectsRect(from: Point, to: Point, obstacle: Obstacle, paddi
   return tMax >= 0 && tMin <= 1;
 }
 
-export function segmentBlocked(from: Point, to: Point, obstacles: Obstacle[] = OBSTACLES): boolean {
-  return obstacles.some(obstacle => segmentIntersectsRect(from, to, obstacle));
+export function segmentBlocked(from: Point, to: Point, obstacles: Obstacle[] = OBSTACLES, padding = 0): boolean {
+  return obstacles.some(obstacle => segmentIntersectsRect(from, to, obstacle, padding));
 }
 
 export function canSee(guard: Point & { angle: number }, target: Point, obstacles: Obstacle[] = OBSTACLES): boolean {
@@ -155,15 +155,25 @@ export function canStand(point: Point, radius = playerRadius, obstacles: Obstacl
   return !obstacles.some(obstacle => pointInObstacle(point, obstacle, radius));
 }
 
-export function findPath(from: Point, to: Point): Point[] {
-  const step = 1;
+function nearestNavigable(point: Point, radius: number, connectFrom?: Point): Point | null {
   const minX = -13;
   const minZ = -9;
-  const width = 27;
+  const maxX = minX + 27 - 1;
+  const maxZ = minZ + 18 - 1;
+  const candidates: Point[] = [];
+  for (let x = minX; x <= maxX; x++) {
+    for (let z = minZ; z <= maxZ; z++) candidates.push({ x, z });
+  }
+  candidates.sort((first, second) => distance(first, point) - distance(second, point));
+  return candidates.find(candidate => canStand(candidate, radius) && (!connectFrom || !segmentBlocked(connectFrom, candidate, OBSTACLES, radius))) ?? null;
+}
+
+export function findPath(from: Point, to: Point, radius = playerRadius): Point[] {
+  const step = 1;
   const key = (x: number, z: number) => `${x},${z}`;
-  const nearest = (point: Point) => ({ x: clamp(Math.round(point.x), minX, minX + width - 1), z: clamp(Math.round(point.z), minZ, minZ + 18 - 1) });
-  const start = nearest(from);
-  const goal = nearest(to);
+  const start = nearestNavigable(from, radius, from);
+  const goal = nearestNavigable(to, radius);
+  if (!start || !goal) return [];
   const queue = [start];
   const parent = new Map<string, Point>();
   const seen = new Set([key(start.x, start.z)]);
@@ -173,7 +183,7 @@ export function findPath(from: Point, to: Point): Point[] {
     for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
       const next = { x: current.x + dx * step, z: current.z + dz * step };
       const nextKey = key(next.x, next.z);
-      if (seen.has(nextKey) || !canStand(next) || segmentBlocked(current, next)) continue;
+      if (seen.has(nextKey) || !canStand(next, radius) || segmentBlocked(current, next, OBSTACLES, radius)) continue;
       seen.add(nextKey); parent.set(nextKey, current); queue.push(next);
     }
   }
@@ -182,7 +192,8 @@ export function findPath(from: Point, to: Point): Point[] {
   const path: Point[] = [];
   let cursor = goal;
   while (key(cursor.x, cursor.z) !== key(start.x, start.z)) { path.unshift({ ...cursor }); cursor = parent.get(key(cursor.x, cursor.z))!; }
-  path.push({ ...to });
+  const last = path.at(-1) ?? start;
+  if (canStand(to, radius) && !segmentBlocked(last, to, OBSTACLES, radius)) path.push({ ...to });
   return path;
 }
 
@@ -194,7 +205,7 @@ function moveToward(actor: Point & { angle: number; moving: boolean }, target: P
   actor.angle = Math.atan2(dx, dz);
   const travel = Math.min(length, speed * delta);
   const next = { x: actor.x + dx / length * travel, z: actor.z + dz / length * travel };
-  actor.moving = canStand(next, radius);
+  actor.moving = canStand(next, radius) && !segmentBlocked(actor, next, OBSTACLES, radius);
   if (actor.moving) { actor.x = next.x; actor.z = next.z; }
   return length < 0.22;
 }
@@ -216,7 +227,7 @@ function updateGuard(guard: Guard, state: GameState, delta: number) {
   if (guard.mode === 'chase') { target = guard.lastSeen; speed = 2.6; }
   else if (guard.mode === 'search') { target = guard.lastSeen; speed = 1.8; }
   else { target = guard.route[guard.waypoint]; if (distance(guard, target) < 0.35) guard.waypoint = (guard.waypoint + 1) % guard.route.length; target = guard.route[guard.waypoint]; }
-  if (!guard.path.length || guard.repath <= 0 || guard.mode !== 'patrol') { guard.path = findPath(guard, target); guard.repath = 0.4; }
+  if (!guard.path.length || guard.repath <= 0 || guard.mode !== 'patrol') { guard.path = findPath(guard, target, guardRadius); guard.repath = 0.4; }
   guard.repath -= delta;
   const next = guard.path[0] ?? target;
   if (moveToward(guard, next, speed, delta, guardRadius)) guard.path.shift();
