@@ -1,0 +1,57 @@
+:root { font-family: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #262524; background: #e9e7de; font-synthesis: none; }
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body { background: #e9e7de; }
+button { font: inherit; }
+.game-shell { position: relative; width: 100%; height: 100%; min-width: 850px; overflow: hidden; background: #e9e7de; }
+#scene { display: block; width: 100%; height: 100%; outline: none; }
+.topbar { position: absolute; inset: 24px 28px auto; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.brand, .clock, .icon-button { pointer-events: auto; }
+.brand { display: flex; align-items: center; gap: 10px; letter-spacing: .04em; }
+.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #e86544; color: #fff; font-size: 22px; font-weight: 800; }
+.brand b { display: block; font-size: 13px; letter-spacing: .14em; line-height: 1; }
+.brand small { display: block; margin-top: 5px; color: #77736d; font: 11px "DM Mono", monospace; letter-spacing: .02em; }
+.clock { padding: 8px 15px 9px; border: 1px solid rgba(46, 43, 38, .12); border-radius: 12px; background: rgba(247, 246, 239, .75); text-align: right; backdrop-filter: blur(8px); }
+.clock span { display: block; color: #8b8880; font: 9px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
+.clock strong { display: block; margin-top: 2px; font: 600 20px "DM Mono", monospace; letter-spacing: -.07em; }
+.icon-button { width: 38px; height: 38px; margin-left: 12px; border: 1px solid rgba(46,43,38,.14); border-radius: 11px; background: rgba(247,246,239,.8); color: #383632; cursor: pointer; font-weight: 700; backdrop-filter: blur(8px); }
+.icon-button:hover { background: #fff; }
+.status-card { position: absolute; left: 28px; bottom: 86px; width: 224px; padding: 16px 17px; border: 1px solid rgba(46,43,38,.12); border-radius: 16px; background: rgba(247,246,239,.82); box-shadow: 0 16px 40px rgba(91,80,59,.08); backdrop-filter: blur(10px); }
+.status-label { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
+.phase-dot { width: 7px; height: 7px; border-radius: 50%; background: #6db381; box-shadow: 0 0 0 4px rgba(109,179,129,.13); }
+.phase-dot.warn { background: #e4a447; box-shadow: 0 0 0 4px rgba(228,164,71,.15); }
+.phase-dot.danger { background: #db614b; box-shadow: 0 0 0 4px rgba(219,97,75,.17); }
+.status-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; color: #76716a; font-size: 11px; }
+.status-row b { color: #9a958e; font-size: 10px; font-weight: 600; }
+.status-row b.active { color: #bc812a; }
+.meter { width: 106px; height: 5px; overflow: hidden; border-radius: 5px; background: #dedbd1; }
+.meter i { display: block; height: 100%; width: 100%; border-radius: inherit; background: #d99a3f; transition: width .15s ease; }
+.hint { margin: 14px 0 0; color: #67635c; font-size: 11px; line-height: 1.6; }
+.exit-progress { position: absolute; left: 50%; bottom: 70px; width: min(330px, calc(100vw - 40px)); padding: 11px 14px 12px; border: 1px solid rgba(46,43,38,.14); border-radius: 12px; background: rgba(247,246,239,.9); box-shadow: 0 12px 30px rgba(91,80,59,.12); backdrop-filter: blur(9px); transform: translateX(-50%); transition: opacity .16s ease, visibility .16s ease; }
+.exit-progress.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.exit-progress-head { display: flex; align-items: center; justify-content: space-between; color: #706b63; font-size: 11px; font-weight: 700; }
+.exit-progress-head b { color: #c17e3c; font: 600 11px "DM Mono", monospace; }
+.exit-progress-track { height: 7px; margin-top: 8px; overflow: hidden; border-radius: 7px; background: #e1ddd2; }
+.exit-progress-track i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #d48c50, #e3ad4d); transition: width .08s linear; }
+.exit-badges { position: absolute; right: 28px; bottom: 86px; display: flex; gap: 9px; }
+.exit-badges > div { display: grid; grid-template-columns: 9px 1fr; column-gap: 7px; min-width: 106px; padding: 9px 11px; border: 1px solid rgba(46,43,38,.1); border-radius: 11px; background: rgba(247,246,239,.7); backdrop-filter: blur(8px); }
+.badge-dot { grid-row: span 2; width: 8px; height: 8px; margin-top: 3px; border-radius: 50%; }
+.badge-dot.front { background: #6da88b; }.badge-dot.back { background: #d48c50; }
+.exit-badges b { font-size: 11px; }.exit-badges small { color: #89847c; font-size: 9px; white-space: nowrap; }
+.controls { position: absolute; left: 50%; bottom: 22px; display: flex; align-items: center; gap: 8px; transform: translateX(-50%); color: #8b867d; font-size: 10px; white-space: nowrap; }
+kbd { padding: 3px 5px; border: 1px solid rgba(46,43,38,.14); border-bottom-width: 2px; border-radius: 5px; background: rgba(247,246,239,.7); color: #57534d; font: 10px "DM Mono", monospace; }
+.modal-layer { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(233,231,222,.2); backdrop-filter: blur(2px); transition: opacity .25s ease, visibility .25s ease; }
+.modal-layer.hidden, .loading.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.intro-card, .result-card { width: min(590px, calc(100% - 44px)); padding: 45px 52px 36px; border: 1px solid rgba(46,43,38,.1); border-radius: 25px; background: rgba(249,248,242,.94); box-shadow: 0 30px 100px rgba(73,64,49,.17); }
+.eyebrow { color: #a17b52; font: 10px "DM Mono", monospace; letter-spacing: .13em; }
+h1 { margin: 13px 0 10px; font-size: clamp(36px, 5vw, 62px); line-height: .98; letter-spacing: -.07em; }
+h1 em { color: #e36445; font-style: normal; }
+.intro-card > p { margin: 0; color: #726e66; font-size: 13px; line-height: 1.7; }
+.brief-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 29px 0 27px; padding-top: 17px; border-top: 1px solid #dedbd1; }
+.brief-grid div { display: grid; grid-template-columns: 31px 1fr; column-gap: 5px; }.brief-grid b { grid-row: span 2; color: #e36445; font: 13px "DM Mono", monospace; }.brief-grid span { font-size: 11px; font-weight: 700; }.brief-grid small { margin-top: 2px; color: #97928a; font-size: 9px; }
+.primary-button { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 14px 17px 14px 21px; border: 0; border-radius: 10px; background: #e36445; color: #fff; cursor: pointer; font-size: 12px; font-weight: 700; box-shadow: 0 9px 18px rgba(227,100,69,.2); }.primary-button span { font-size: 19px; line-height: 10px; }.primary-button:hover { background: #d75437; transform: translateY(-1px); }
+.microcopy { margin-top: 14px !important; color: #aaa59b !important; font: 9px "DM Mono", monospace !important; text-align: center; }
+.result-card { width: min(420px, calc(100% - 44px)); text-align: center; }.result-card h2 { margin: 12px 0 10px; font-size: 37px; letter-spacing: -.06em; }.result-card p { margin: 0 0 26px; color: #77716a; font-size: 12px; line-height: 1.7; }.result-card .primary-button { text-align: left; }
+.loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 11px; color: #817b71; background: #e9e7de; font: 11px "DM Mono", monospace; transition: opacity .25s, visibility .25s; }.loader { width: 14px; height: 14px; border: 2px solid #d7d1c3; border-top-color: #e36445; border-radius: 50%; animation: spin .7s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+.debug-panel { position: fixed; z-index: 50; right: 18px; bottom: 18px; width: min(620px, calc(100vw - 36px)); max-height: 310px; padding: 10px; border: 1px solid rgba(40, 40, 35, .22); border-radius: 10px; background: rgba(26, 29, 29, .92); color: #d8e8df; box-shadow: 0 14px 40px rgba(0,0,0,.22); backdrop-filter: blur(8px); }.debug-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; font-size: 11px; }.debug-head button { border: 1px solid #668074; border-radius: 5px; background: transparent; color: #d8e8df; cursor: pointer; font: 10px "DM Mono", monospace; }.debug-panel pre { max-height: 265px; margin: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; color: #afd1bf; font: 9px/1.45 "DM Mono", monospace; }
+@media (max-width: 900px) { .status-card { left: 18px; bottom: 66px; transform: scale(.88); transform-origin: left bottom; }.exit-badges { right: 18px; bottom: 66px; transform: scale(.88); transform-origin: right bottom; }.topbar { inset: 17px 18px auto; }.controls { bottom: 15px; }.intro-card { padding: 34px 30px 28px; } }
