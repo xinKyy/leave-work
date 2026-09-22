@@ -142,6 +142,29 @@ describe('movement and routes', () => {
     stepGame(diagonal, { ...still, x: 1 }, 1);
     expect(JSON.stringify(diagonal)).toBe(snapshot);
   });
+  it('does not toggle sprint on and off when stamina is exhausted', () => {
+    const state = createGame();
+    state.phase = 'playing';
+    state.guards = [];
+    state.stamina = 0.01;
+    for (let tick = 0; tick < 3; tick++) {
+      stepGame(state, { ...still, x: 1, run: true }, 0.05);
+      expect(state.player.running).toBe(false);
+    }
+    state.stamina = 0.25;
+    stepGame(state, { ...still, x: 1, run: true }, 0.05);
+    expect(state.player.running).toBe(true);
+    let previousRunning = state.player.running;
+    let exhaustedAt = -1;
+    let restartedAt = -1;
+    for (let tick = 0; tick < 100; tick++) {
+      stepGame(state, { ...still, x: 1, run: true }, 0.05);
+      if (previousRunning && !state.player.running) exhaustedAt = tick;
+      if (exhaustedAt >= 0 && state.player.running) { restartedAt = tick; break; }
+      previousRunning = state.player.running;
+    }
+    expect(restartedAt - exhaustedAt).toBeGreaterThanOrEqual(10);
+  });
 });
 
 describe('escape and detection', () => {

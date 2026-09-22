@@ -62,6 +62,8 @@ const sightRange = 7.2;
 const sightHalfAngle = Math.PI * 0.28;
 const playerRadius = 0.34;
 const guardRadius = 0.38;
+const sprintStartStamina = 0.2;
+const sprintStopStamina = 0.02;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.z - b.z);
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const normalizeAngle = (value: number) => ((value % TAU) + TAU) % TAU;
@@ -288,7 +290,7 @@ export function stepGame(state: GameState, input: Input, delta: number): void {
   state.time = Math.max(0, state.time - elapsed);
   if (state.time <= 0) { state.phase = 'lost'; state.reason = '加班警报：时间到了'; return; }
   const length = Math.hypot(input.x, input.z);
-  const running = input.run && length > 0.01 && state.stamina > 0.02;
+  const running = input.run && length > 0.01 && (state.player.running ? state.stamina > sprintStopStamina : state.stamina >= sprintStartStamina);
   const speed = running ? 5.1 : 3.1;
   if (running) state.stamina = clamp(state.stamina - elapsed * 0.34, 0, 1);
   else state.stamina = clamp(state.stamina + elapsed * 0.22, 0, 1);
