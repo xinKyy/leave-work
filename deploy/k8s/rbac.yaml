@@ -1,0 +1,28 @@
+# Use an administrator kubeconfig to apply this file once.
+# Replace TARGET_NAMESPACE with the namespace used by SEALOS_NAMESPACE.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: leave-work-deployer
+  namespace: TARGET_NAMESPACE
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/status"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: leave-work-deployer
+  namespace: TARGET_NAMESPACE
+subjects:
+  - kind: ServiceAccount
+    name: rpxv3va7
+    namespace: user-system
+roleRef:
+  kind: Role
+  name: leave-work-deployer
+  apiGroup: rbac.authorization.k8s.io

@@ -55,6 +55,10 @@ jobs:
           DEPLOYMENT: ${{ env.DEPLOYMENT }}
         run: |
           test -n "$SEALOS_NAMESPACE" || { echo "Missing SEALOS_NAMESPACE"; exit 1; }
+          kubectl -n "$SEALOS_NAMESPACE" auth can-i get deployments.apps
+          kubectl -n "$SEALOS_NAMESPACE" auth can-i patch deployments.apps
+          kubectl -n "$SEALOS_NAMESPACE" auth can-i get services
+          kubectl -n "$SEALOS_NAMESPACE" auth can-i patch services
           kubectl -n "$SEALOS_NAMESPACE" apply -f deploy/k8s/deployment.yaml
           kubectl -n "$SEALOS_NAMESPACE" set image deployment/$DEPLOYMENT "$DEPLOYMENT=$IMAGE:$GITHUB_SHA"
           kubectl -n "$SEALOS_NAMESPACE" rollout status deployment/$DEPLOYMENT --timeout=180s

@@ -83,6 +83,16 @@ docker run --rm -p 8080:80 leave-work:latest
 
 工作流会创建一个 `LoadBalancer` Service。Sealos 如果不自动分配公网地址，在控制台为 `leave-work` Service 开启公网访问或绑定域名即可。对 `main` 的每次合并都会发布新的镜像并等待滚动更新完成。
 
+如果工作流报 `User ... is forbidden`，说明 kubeconfig 的身份已经正确，但没有 Kubernetes 写权限。当前工作流使用的身份是错误信息里显示的 ServiceAccount，例如 `system:serviceaccount:user-system:rpxv3va7`。请使用 Sealos 管理员 kubeconfig 在目标 namespace 执行一次授权：
+
+```bash
+export KUBECONFIG=/path/to/sealos-admin-kubeconfig.yaml
+export SEALOS_NAMESPACE=your-sealos-namespace
+sed "s/TARGET_NAMESPACE/$SEALOS_NAMESPACE/g" deploy/k8s/rbac.yaml | kubectl apply -f -
+```
+
+这条 Role 只允许该身份管理本项目的 Deployment 和 Service，不授予整个集群的管理员权限。授权后可以在 GitHub Actions 重新运行失败的 `Deploy to Sealos`，或者合并一个新的 PR 触发发布。
+
 ## 技术说明
 
 核心状态与规则在 `src/simulation.ts`，Three.js 场景和模型加载在 `src/world.ts`，浏览器输入与界面在 `src/main.ts`。人物模型使用 Quaternius 的 CC0 资源，来源和哈希记录在 `ASSETS.md`。模型加载失败时会自动使用内置低多边形角色，游戏仍然可以操作。
