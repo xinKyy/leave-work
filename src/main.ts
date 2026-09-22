@@ -9,8 +9,11 @@ app.innerHTML = `
     <canvas id="scene" tabindex="0" aria-label="准点下班 3D 游戏场景"></canvas>
     <section class="topbar">
       <div class="brand"><span class="brand-mark">→</span><div><b>OFF DUTY</b><small>准点下班</small></div></div>
-      <div class="clock"><span>距离下班</span><strong id="time">01:35</strong></div>
-      <button id="pause" class="icon-button" type="button" aria-label="暂停游戏">Ⅱ</button>
+      <div class="topbar-actions">
+        <a class="github-link" href="https://github.com/xinKyy/leave-work" target="_blank" rel="noreferrer">GitHub 协作 <span>↗</span></a>
+        <div class="clock"><span>距离下班</span><strong id="time">01:35</strong></div>
+        <button id="pause" class="icon-button" type="button" aria-label="暂停游戏">Ⅱ</button>
+      </div>
     </section>
     <aside class="status-card">
       <div class="status-label"><span id="phase-dot" class="phase-dot"></span><span id="status">准备出发</span></div>
