@@ -65,26 +65,7 @@ docker run --rm -p 8080:80 leave-work:latest
 
 ## GitHub Actions 自动部署
 
-仓库已经包含 `.github/workflows/ci.yml` 和 `.github/workflows/deploy.yml`：所有 PR 会自动跑测试和构建，PR 合并到 `main` 后会构建镜像、推送到 GHCR，并通过 `kubectl` 更新 Sealos Deployment。
-
-首次配置需要在 GitHub 仓库的 Settings → Secrets and variables → Actions 中添加：
-
-- `SEALOS_KUBECONFIG_B64`：Sealos 集群 kubeconfig 文件经过 Base64 编码后的内容。
-- `SEALOS_NAMESPACE`：Sealos 应用所在的命名空间，不要填写 Workspace 展示名称。
-
-不要把 kubeconfig、Sealos Token 或 GHCR 密码提交到仓库。可以在本地执行 `base64 -i kubeconfig.yaml | pbcopy`，然后把剪贴板内容粘贴到 `SEALOS_KUBECONFIG_B64`。Sealos 需要能够拉取 GHCR 镜像：可以将 `ghcr.io/<owner>/<repo>` 设置为公开包；如果保持私有，则在 Sealos 命名空间创建镜像拉取 Secret，并在 `deploy/k8s/deployment.yaml` 的 Pod 配置中加入该 Secret。
-
-工作流会创建一个供 Ingress 使用的 `ClusterIP` Service。请在 Sealos 中为 Ingress 绑定域名或使用平台分配的公网域名。对 `main` 的每次合并都会发布新的镜像并等待滚动更新完成。
-
-如果工作流报 `User ... is forbidden`，说明 kubeconfig 的身份已经正确，但没有 Kubernetes 写权限。请使用 Sealos 管理员 kubeconfig 在目标 namespace 执行一次授权：
-
-```bash
-export KUBECONFIG=/path/to/sealos-admin-kubeconfig.yaml
-export SEALOS_NAMESPACE=your-sealos-namespace
-sed "s/TARGET_NAMESPACE/$SEALOS_NAMESPACE/g" deploy/k8s/rbac.yaml | kubectl apply -f -
-```
-
-这条 Role 只允许该身份管理本项目的 Deployment 和 Service，不授予整个集群的管理员权限。授权后可以在 GitHub Actions 重新运行失败的 `Deploy to Sealos`，或者合并一个新的 PR 触发发布。
+PR 合并到 `main` 后会自动部署。
 
 ## 技术说明
 
