@@ -4,6 +4,11 @@ metadata:
   name: leave-work
   labels:
     app: leave-work
+    cloud.sealos.io/app-deploy-manager: leave-work
+  annotations:
+    deploy.cloud.sealos.io/minReplicas: "1"
+    deploy.cloud.sealos.io/maxReplicas: "1"
+    deploy.cloud.sealos.io/resize: "0Gi"
 spec:
   replicas: 1
   selector:
@@ -41,6 +46,7 @@ metadata:
   name: leave-work
   labels:
     app: leave-work
+    cloud.sealos.io/app-deploy-manager: leave-work
 spec:
   type: LoadBalancer
   selector:
