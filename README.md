@@ -11,7 +11,7 @@ npm run dev
 
 打开终端输出的本地地址。生产构建使用 `npm run build`，测试使用 `npm test`。
 
-开发服务器已绑定到 `0.0.0.0`，同一局域网内的设备可访问当前电脑地址：`http://192.168.0.187:4173/`。如果路由器重新分配了 IP，请用 `ifconfig` 查看当前 `en0` 的 `inet` 地址。
+开发服务器已绑定到 `0.0.0.0`，同一局域网内的设备可访问当前电脑的局域网地址：`http://<你的局域网地址>:4173/`。如果不知道当前地址，可以查看操作系统的网络设置。
 
 排查移动问题时，在地址后加 `?debug`，例如 `http://localhost:4173/?debug`。右下角会显示移动和碰撞日志，点击“复制”后把内容发回即可；同时日志也会输出到浏览器控制台。
 
@@ -27,13 +27,13 @@ npm run dev
 
 ## 协作开发
 
-项目仓库：[github.com/xinKyy/leave-work](https://github.com/xinKyy/leave-work)
+项目仓库：请在当前 GitHub 仓库页面查看 Issues 和 Pull Requests。
 
 欢迎提交功能、修复问题和关卡创意。推荐使用独立分支并通过 Pull Request 合并：
 
 ```bash
-git clone https://github.com/xinKyy/leave-work.git
-cd leave-work
+git clone <仓库地址>
+cd <仓库目录>
 npm install
 git checkout -b feat/your-change
 ```
@@ -46,7 +46,7 @@ git commit -m "describe your change"
 git push -u origin feat/your-change
 ```
 
-然后在 GitHub 创建 Pull Request，并在描述中写清楚改动内容、测试结果和需要关注的地方。小型修复可以直接提交，涉及玩法、地图或 UI 的改动请先开 Issue 讨论。私有仓库需要仓库所有者先在 GitHub 的 Settings → Collaborators 中邀请贡献者。
+然后在 GitHub 创建 Pull Request，并在描述中写清楚改动内容、测试结果和需要关注的地方。小型修复可以直接提交，涉及玩法、地图或 UI 的改动请先开 Issue 讨论。仓库启用协作者限制时，需要仓库所有者先在 GitHub 的协作者设置中邀请贡献者。
 
 ## 部署到 Sealos
 
@@ -54,7 +54,7 @@ git push -u origin feat/your-change
 
 ### 方式一：Sealos 直接从 GitHub 构建
 
-1. 在 Sealos 的应用部署页面选择从 GitHub 仓库构建，填写 `xinKyy/leave-work`。
+1. 在 Sealos 的应用部署页面选择从 GitHub 仓库构建，填写你的仓库地址。
 2. 构建方式选择 Dockerfile，分支选择 `main`。
 3. 容器端口填写 `80`，协议选择 HTTP；CPU `0.25` 核、内存 `256Mi` 通常足够。
 4. 创建并等待构建完成，然后打开 Sealos 分配的公网域名。
@@ -77,13 +77,13 @@ docker run --rm -p 8080:80 leave-work:latest
 首次配置需要在 GitHub 仓库的 Settings → Secrets and variables → Actions 中添加：
 
 - `SEALOS_KUBECONFIG_B64`：Sealos 集群 kubeconfig 文件经过 Base64 编码后的内容。
-- `SEALOS_NAMESPACE`：Sealos 应用所在的命名空间。
+- `SEALOS_NAMESPACE`：Sealos 应用所在的命名空间，不要填写 Workspace 展示名称。
 
-不要把 kubeconfig、Sealos Token 或 GHCR 密码提交到仓库。可以在本地执行 `base64 -i kubeconfig.yaml | pbcopy`，然后把剪贴板内容粘贴到 `SEALOS_KUBECONFIG_B64`。Sealos 需要能够拉取 GHCR 镜像：最简单的做法是将 `ghcr.io/xinkyy/leave-work` 设置为公开包；如果保持私有，则在 Sealos 命名空间创建名为 `ghcr-pull` 的镜像拉取 Secret，并在 `deploy/k8s/deployment.yaml` 的 Pod 配置中加入该 Secret。
+不要把 kubeconfig、Sealos Token 或 GHCR 密码提交到仓库。可以在本地执行 `base64 -i kubeconfig.yaml | pbcopy`，然后把剪贴板内容粘贴到 `SEALOS_KUBECONFIG_B64`。Sealos 需要能够拉取 GHCR 镜像：可以将 `ghcr.io/<owner>/<repo>` 设置为公开包；如果保持私有，则在 Sealos 命名空间创建镜像拉取 Secret，并在 `deploy/k8s/deployment.yaml` 的 Pod 配置中加入该 Secret。
 
-工作流会创建一个 `LoadBalancer` Service。Sealos 如果不自动分配公网地址，在控制台为 `leave-work` Service 开启公网访问或绑定域名即可。对 `main` 的每次合并都会发布新的镜像并等待滚动更新完成。
+工作流会创建一个供 Ingress 使用的 `ClusterIP` Service。请在 Sealos 中为 Ingress 绑定域名或使用平台分配的公网域名。对 `main` 的每次合并都会发布新的镜像并等待滚动更新完成。
 
-如果工作流报 `User ... is forbidden`，说明 kubeconfig 的身份已经正确，但没有 Kubernetes 写权限。当前工作流使用的身份是错误信息里显示的 ServiceAccount，例如 `system:serviceaccount:user-system:rpxv3va7`。请使用 Sealos 管理员 kubeconfig 在目标 namespace 执行一次授权：
+如果工作流报 `User ... is forbidden`，说明 kubeconfig 的身份已经正确，但没有 Kubernetes 写权限。请使用 Sealos 管理员 kubeconfig 在目标 namespace 执行一次授权：
 
 ```bash
 export KUBECONFIG=/path/to/sealos-admin-kubeconfig.yaml
